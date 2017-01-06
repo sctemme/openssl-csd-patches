@@ -1,0 +1,59 @@
+diff --git a/Configure b/Configure
+index 6a50cb1..ced118e 100755
+--- a/Configure
++++ b/Configure
+@@ -211,6 +211,9 @@ my %table=(
+ 
+ # Basic configs that should work on any (32 and less bit) box
+ "gcc",		"gcc:-O3::(unknown):::BN_LLONG:::",
++"powerpc-codesafe-linux-gnu-gcc",	"powerpc-codesafe-linux-gnu-gcc: -DNF_CROSSCC_PPC_GCC -O3 -I/opt/nfast/c/csd/gcc/include -I/opt/nfast/c/csd/include-see/glibsee/ -mpowerpc -mcpu=e5500 -mno-toc -mbig-endian -mhard-float -meabi -mprototype -DNF_CROSSCC=1 ::(unknown):::BN_LLONG:::",
++"powerpc-codesafe-elf-gcc",	"powerpc-codesafe-elf-gcc:-DNF_CROSSCC_PPC_GCC -O3 -I/opt/nfast/c/csd/gcc/include -I/opt/nfast/c/csd/include-see/bsdlib -I/opt/nfast/c/csd/include-see/bsdsee/ -I/opt/nfast/c/csd/include-see/module/rtlib ::(unknown):::BN_LLONG:::",
++"strongarm-codesafe-elf-gcc",	"strongarm-codesafe-elf-gcc:-DNF_CROSSCC_ARM_GCC -O3 -I/opt/nfast/c/csd/gcc/include -I/opt/nfast/c/csd/include-see/bsdlib -I/opt/nfast/c/csd/include-see/bsdsee/ -I/opt/nfast/c/csd/include-see/module/rtlib -mapcs-32 -msoft-float -mlittle-endian -march=armv4 -nostdinc -fno-builtin ::(unknown):::BN_LLONG:::",
+ "cc",		"cc:-O::(unknown)::::::",
+ 
+ ####VOS Configurations
+diff --git a/Makefile.org b/Makefile.org
+index bc1c3be..c41fac4 100644
+--- a/Makefile.org
++++ b/Makefile.org
+@@ -135,7 +135,7 @@ FIPSCANLIB=
+ 
+ BASEADDR=
+ 
+-DIRS=   crypto ssl engines apps test tools
++DIRS=   crypto ssl engines
+ ENGDIRS= ccgost
+ SHLIBDIRS= crypto ssl
+ 
+diff --git a/engines/e_chil.c b/engines/e_chil.c
+index 5dfab51..0d95289 100644
+--- a/engines/e_chil.c
++++ b/engines/e_chil.c
+@@ -546,6 +546,19 @@ static int hwcrhk_init(ENGINE *e)
+     HWCryptoHook_RandomBytes_t *p8;
+     HWCryptoHook_ModExpCRT_t *p9;
+ 
++#ifdef OPENSSL_STATIC_CHIL_LIB
++    p_hwcrhk_Init = HWCryptoHook_Init;
++    p_hwcrhk_Finish = HWCryptoHook_Finish;
++    p_hwcrhk_ModExp = HWCryptoHook_ModExp;
++#ifndef OPENSSL_NO_RSA
++    p_hwcrhk_RSA = HWCryptoHook_RSA;
++    p_hwcrhk_RSALoadKey = HWCryptoHook_RSALoadKey;
++    p_hwcrhk_RSAGetPublicKey = HWCryptoHook_RSAGetPublicKey;
++    p_hwcrhk_RSAUnloadKey = HWCryptoHook_RSAUnloadKey;
++#endif
++    p_hwcrhk_RandomBytes = HWCryptoHook_RandomBytes;
++    p_hwcrhk_ModExpCRT = HWCryptoHook_ModExpCRT;
++#else
+     if (hwcrhk_dso != NULL) {
+         HWCRHKerr(HWCRHK_F_HWCRHK_INIT, HWCRHK_R_ALREADY_LOADED);
+         goto err;
+@@ -591,6 +604,7 @@ static int hwcrhk_init(ENGINE *e)
+ #  endif
+     p_hwcrhk_RandomBytes = p8;
+     p_hwcrhk_ModExpCRT = p9;
++#endif /* OPENSSL_STATIC_CHIL_LIB */
+ 
+     /*
+      * Check if the application decided to support dynamic locks, and if it
